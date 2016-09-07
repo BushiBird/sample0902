@@ -22,7 +22,8 @@
 		    //  定数
 		    //-----------------------------
             //  表示系
-		    var FRAME_RATE = 1000 / 30;        //  1秒間に画面を更新する頻度
+		    var ROTATION_TIME = 1000 / 30;              //  カウントを更新する時間（通常）
+		    var ROTATION_DOWN_TIME = ROTATION_TIME*2;        //  カウントを更新する時間（減速）
 		    var CANVAS_ROULETTE_MAX = 200;     //   キャンバスの最大の大きさ
 		    var CANVAS_ROULETTE_MIN = 0;       //  キャンバスの最小の大きさ
 		    var CANVAS_ROULETTE_RADIUS = 100;    //  キャンバスの表示するルーレットの半径
@@ -35,7 +36,7 @@
 		    var COUNT_OFFSET = 0;       //  カウンターで画像とシンボルの表示を合わせる
 		    var ROTATION_RESOLUTION = 1000; //  回転解像度
 		    var ROTATION_SPEED = 20;        //  回転速度
-		    var ROTATION_DOWN_SPEED = 10;   //  減速後の速度
+//		    var ROTATION_DOWN_SPEED = 10;   //  減速後の速度
             //  時間系
 		    var STOP_SECOND = 1000;         //  ストップボタンが押されてから停止する時間
 
@@ -105,16 +106,24 @@
 		    //--------------------------
 		    //  ルーレットオブジェクト
 		    //--------------------------
-		    function roulette(_rSpeed) {
-		        this.rSpeed = _rSpeed;  //  回転速度
-		        this.count = COUNT_MIN;         //  カウンター
+		    function roulette(_id,_canvas,_stopSymbol,_x,_y,_radius) {
+		        this.rSpeed = ROTATION_SPEED;  //  回転速度
+		        this.count = COUNT_MIN; //  カウンター
 		        this.IsCount = true;    //  カウントするか
+		        this.timerId = NaN;
+		        this.canvas = _canvas;
+		        this.x = _x;
+		        this.y = _y;
+		        this.radius = _radius;
+		        this.stopSymbol = _stopSymbol;
+		        this.id = _id;
 
                 //  初期化
 		        this.init = function () {
 		            this.rSpeed = ROTATION_SPEED;
 		            this.IsCount = true;
 		            this.count = COUNT_MIN;
+		            this.timerId = NaN;
 		        }
                 //  更新
 		        this.update = function () {
@@ -123,7 +132,53 @@
 		            if (COUNT_MAX < this.count) {
 		                this.count = COUNT_MIN;
 		            }
+
+		            this.draw();
+
 		        }
+		        this.draw = function (){
+		            //drawRoulette("canvas", CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS, stopSymbol, roulette1.rSpeed, roulette1.count);
+		            var canvas = document.getElementById(this.canvas);
+		            ctx = canvas.getContext("2d");
+
+		            //  キャンバスの大きさ分画像を更新する
+		            ctx.clearRect(CANVAS_ROULETTE_MIN, CANVAS_ROULETTE_MIN, CANVAS_ROULETTE_MAX, CANVAS_ROULETTE_MAX);
+
+		            ctx.save();
+
+		            //  画像を挿入
+		            var rouletteImg = document.getElementById(ROULETTE_IMG_NAME);
+		            ctx.translate(this.x, this.y);          //  円の中心座標を設定する
+		            ctx.rotate(rTimer * (this.count + COUNT_OFFSET) * this.rSpeed);  //	座標回転（移動用）
+		            ctx.drawImage(rouletteImg, -this.radius, -this.radius, this.radius * 2, this.radius * 2);
+
+		            ctx.restore();  //  セーブした描画状態を取り出す
+
+		            //  ルーレット盤に表示するシンボル分繰り返す
+		            for (var i = 0; i < this.stopSymbol.length; i++) {
+		                ctx.save();
+		                var r = (Math.PI / 6) * i;    //  12分割する（2π/12*i)
+		                ctx.translate(this.x, this.y);          //  円の中心座標を設定する
+		                ctx.rotate(r);                  //  座標回転（分割用）
+
+		                ctx.rotate(rTimer * this.count * this.rSpeed);  //	座標回転（移動用）
+
+		                //drawSymbol(_stopSymbol[i], _radius);
+		                drawSymbolImg(this.stopSymbol[i], this.radius); //  シンボル表示			        
+
+		                //  線を表示する（デバッグ用）
+		                ctx.beginPath();
+		                ctx.moveTo(0, 0);
+		                ctx.lineTo(0, -1 * this.radius);  //  線を表示
+		                ctx.stroke();
+
+		                ctx.restore();  //  セーブした描画状態を取り出す
+		            }
+
+		            drawCircle(this.x, this.y, this.radius);                //	円を表示（デバッグ）
+		            drawUnderTriangle(this.x, this.y - this.radius + 2, 10);//  下三角を表示（デバッグ）
+		        }
+
 		    }// ここまでルーレットオブジェクト
 
 		    //-----------------------------
@@ -133,6 +188,9 @@
 		    var timerId = NaN;  //  回転中の画像更新
 			var timerId2 = NaN; //  ルーレット一つ一つを減速停止させる処理
 			var timerId3 = NaN; //  ルーレットすべてが停止後の処理
+
+			var timerIdRoulette = [NaN, NaN, NaN, NaN, NaN];
+
 			var rTimer = (Math.PI * 2) / ROTATION_RESOLUTION; //  回転係数
 			
 			var countRoulette = 0;//  ルーレットが何個停止処理に入っているかカウントする
@@ -141,11 +199,11 @@
 			var symbolResult = [0, 0, 0, 0, 0];//  停止したシンボルの数を取得
             
             //  ルーレットオブジェクト
-			var roulette1 = new roulette(ROTATION_SPEED);
-			var roulette2 = new roulette(ROTATION_SPEED);
-			var roulette3 = new roulette(ROTATION_SPEED);
-			var roulette4 = new roulette(ROTATION_SPEED);
-			var roulette5 = new roulette(ROTATION_SPEED);
+			var roulette1 = new roulette(0,"canvas", stopSymbol, CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS);
+			var roulette2 = new roulette(1,"canvas2", stopSymbol, CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS);
+			var roulette3 = new roulette(2,"canvas3", stopSymbol, CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS);
+			var roulette4 = new roulette(3,"canvas4", stopSymbol2, CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS);
+			var roulette5 = new roulette(4,"canvas5", stopSymbol3, CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS);
 
             //  描画系
 			var ctx;    //  ルーレット表示用コンテキスト
@@ -155,31 +213,117 @@
             //  スタートボタンが押された処理
             function startTimer() {
                 timerInit();
-			    clearInterval(timerId);
-			    timerId = setInterval(update, FRAME_RATE);
+			 //   clearInterval(timerId);
+			 //   timerId = setInterval(update, ROTATION_TIME);
 
-			    for (var i = 0; i < symbolResult.length; i++) {
-			        symbolResult[i] = 0;
-			    }
+			  //  clearInterval(roulette1.timerId);
+                //  ルーレット１を回転させる
+			 //   roulette1.timerId = setInterval(roulette1.update, ROTATION_TIME);
+
+                //  setIntervalに与える関数には無名関数を使う（詰まった）
+              //  for (var i = 0; i < timerIdRoulette.length; i++) {
+                clearInterval(timerIdRoulette[roulette1.id]);
+                timerIdRoulette[roulette1.id] = setInterval(function () { roulette1.update() }, ROTATION_TIME);
+                clearInterval(timerIdRoulette[roulette2.id]);
+                timerIdRoulette[roulette2.id] = setInterval(function () { roulette2.update() }, ROTATION_TIME);
+                clearInterval(timerIdRoulette[roulette3.id]);
+                timerIdRoulette[roulette3.id] = setInterval(function () { roulette3.update() }, ROTATION_TIME);
+                clearInterval(timerIdRoulette[roulette4.id]);
+                timerIdRoulette[roulette4.id] = setInterval(function () { roulette4.update() }, ROTATION_TIME);
+                clearInterval(timerIdRoulette[roulette5.id]);
+                timerIdRoulette[roulette5.id] = setInterval(function () { roulette5.update() }, ROTATION_TIME);
+             //   }
+
+              //  roulette1.startTimer();
 			}
 			
             //  ストップボタンが押された処理
             function stopTimer() {
                 countRoulette = 0;
-			    roulette1.rSpeed = ROTATION_DOWN_SPEED;
-			    timerId2 = setInterval(stopRoulette, STOP_SECOND);
+                //  ルーレット１を減速する
+                clearInterval(timerIdRoulette[roulette1.id]);
+                timerIdRoulette[roulette1.id] = setInterval(function () { roulette1.update() }, ROTATION_DOWN_TIME);
+                setTimeout(function () { downSpeed_stop(roulette1.id) }, STOP_SECOND);    //  1秒後に停止＆減速
+                setTimeout(function () { downSpeed_stop(roulette2.id) }, STOP_SECOND * 2);    //  2秒後に停止＆減速
+                setTimeout(function () { downSpeed_stop(roulette3.id) }, STOP_SECOND * 3);    //  3秒後に停止＆減速
+                setTimeout(function () { downSpeed_stop(roulette4.id) }, STOP_SECOND * 4);    //  4秒後に停止＆減速
+                setTimeout(function () { downSpeed_stop(roulette5.id) }, STOP_SECOND * 5);    //  5秒後に停止＆減速
+                setTimeout(function () { downSpeed_stop(roulette5.id + 1) }, STOP_SECOND * 6);    //  IDはないけど停止
+
+               // clearInterval(timerIdRoulette[roulette2.id]);
+               // timerIdRoulette[roulette2.id] = setInterval(function () { roulette2.update(roulette2.id) }, ROTATION_DOWN_TIME);
+                //roulette1.rSpeed = ROTATION_DOWN_SPEED;
+              //  clearInterval(timerId);
+              //  timerId = setInterval(update, ROTATION_TIME);
+			  //  timerId2 = setInterval(stopRoulette, STOP_SECOND);
 			    //  6秒後に全部ストップ
-			    clearInterval(timerId3);
-			    timerId3 = setInterval(stop, STOP_SECOND*6);
+			 //   clearInterval(timerId3);
+			 //   timerId3 = setInterval(stop, STOP_SECOND*6);
 			   // result();
 			}
+
+            function downSpeed_stop(_id) {
+
+                clearInterval(timerIdRoulette[_id]);
+
+               // if ((_id - 1) < 0) return;
+
+                switch(_id){
+                    case 1:
+                        clearInterval(timerIdRoulette[0]);   //  ルーレット１を停止
+                        //  ルーレット２を減速
+                        timerIdRoulette[1] = setInterval(function () { roulette2.update() }, ROTATION_DOWN_TIME);
+                        saveStopSymbol(rTimer * roulette1.count * roulette1.rSpeed, stopSymbol);
+                        draw();
+                        break;
+                    case 2:
+                        clearInterval(timerIdRoulette[1]);   //  ルーレット2を停止
+                       // clearInterval(timerIdRoulette[2]);   //  ルーレット2を停止
+                        //  ルーレット3を減速
+                        timerIdRoulette[2] = setInterval(function () { roulette3.update() }, ROTATION_DOWN_TIME);
+                        saveStopSymbol(rTimer * roulette2.count * roulette2.rSpeed, stopSymbol);
+                        draw();
+                        break;
+                    case 3:
+                        clearInterval(timerIdRoulette[2]);   //  ルーレット3を停止
+                        //  ルーレット4を減速
+                        timerIdRoulette[3] = setInterval(function () { roulette4.update() }, ROTATION_DOWN_TIME);
+                        saveStopSymbol(rTimer * roulette3.count * roulette3.rSpeed, stopSymbol);
+                        draw();
+                        break;
+                    case 4:
+                        clearInterval(timerIdRoulette[3]);   //  ルーレット4を停止
+                        //  ルーレット5を減速
+                        timerIdRoulette[4] = setInterval(function () { roulette5.update() }, ROTATION_DOWN_TIME);
+                        saveStopSymbol(rTimer * roulette4.count * roulette4.rSpeed, stopSymbol2);
+                        draw();
+                        break;
+                    case 5:
+                        clearInterval(timerIdRoulette[4]);   //  ルーレット5を停止
+                        saveStopSymbol(rTimer * roulette5.count * roulette5.rSpeed, stopSymbol);
+                        draw();
+                        break;
+                }
+            }
 
 			//  初期化（最初に呼ばれる）
 			function init() {
 
-			    timerInit();
-			    draw();
+			    //  結果を初期化する
+			    for (var i = 0; i < symbolResult.length; i++) {
+			        symbolResult[i] = 0;
+			    }
 
+			    timerInit();
+			    
+                //  ルーレットを描画
+			    roulette1.draw();
+			    roulette2.draw();
+			    roulette3.draw();
+			    roulette4.draw();
+			    roulette5.draw();
+
+			    draw(); //  ルーレット以外を描画
 			}
 
             //  ルーレットをストップさせる
@@ -232,17 +376,30 @@
 			    clearInterval(timerId);
 			    clearInterval(timerId2);
 			    clearInterval(timerId3);
+               
 			}
 
 		    //  回転中に呼ばれる関数
-			function update(){
-
-			    roulette1.update();
-			    roulette2.update();
+			function update(_rouletteNum){
+                /*
+			    switch (_rouletteNum) {
+			        case 0: roulette1.update(); break;
+			        case 1: roulette2.update(); break;
+			        case 2: roulette3.update(); break;
+			        case 3: roulette4.update(); break;
+			        case 4: roulette5.update(); break;
+			    }*/
+			    
+			 /*   roulette2.update();
 			    roulette3.update();
 			    roulette4.update();
 			    roulette5.update();
-			    draw();
+                */
+			  /*  roulette2.update();
+			    roulette3.update();
+			    roulette4.update();
+			    roulette5.update();*/
+			  //  draw();
 		
 			}
 		
@@ -328,11 +485,11 @@
 			function draw() {
 
                 //  ルーレット描画
-			    drawRoulette("canvas", CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS, stopSymbol, roulette1.rSpeed, roulette1.count);
-			    drawRoulette("canvas2", CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS, stopSymbol, roulette2.rSpeed, roulette2.count);
-			    drawRoulette("canvas3", CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS, stopSymbol, roulette3.rSpeed, roulette3.count);
-			    drawRoulette("canvas4", CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS, stopSymbol2, roulette4.rSpeed, roulette4.count);
-			    drawRoulette("canvas5", CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS, stopSymbol3, roulette5.rSpeed, roulette5.count);
+			 //   drawRoulette("canvas", CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS, stopSymbol, roulette1.rSpeed, roulette1.count);
+			 //   drawRoulette("canvas2", CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS, stopSymbol, roulette2.rSpeed, roulette2.count);
+			 //   drawRoulette("canvas3", CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS, stopSymbol, roulette3.rSpeed, roulette3.count);
+			  //  drawRoulette("canvas4", CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS, stopSymbol2, roulette4.rSpeed, roulette4.count);
+			  //  drawRoulette("canvas5", CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS, stopSymbol3, roulette5.rSpeed, roulette5.count);
 			    //drawRoulette2("canvas5", 100, 100, 50, stopSymbol3, rouletteTest[0]);
 
 			    //  結果を表示する
