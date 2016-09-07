@@ -21,15 +21,25 @@
             //-----------------------------
 		    //  定数
 		    //-----------------------------
-		    var FRAME_RATE = 1000/30;            //  1秒間に画面を更新する頻度
-		    //		    var frame = 1000 / 30;
-		    //  回転
-		    var COUNT_MAX = 3000;           //  カウンターを更新する値
+            //  表示系
+		    var FRAME_RATE = 1000 / 30;        //  1秒間に画面を更新する頻度
+		    var CANVAS_ROULETTE_MAX = 200;     //   キャンバスの最大の大きさ
+		    var CANVAS_ROULETTE_MIN = 0;       //  キャンバスの最小の大きさ
+		    var CANVAS_ROULETTE_RADIUS = 100;    //  キャンバスの表示するルーレットの半径
+		    var CANVAS_ROULETTE_X = 100;        //  キャンバスに表示するルーレットのX座標
+		    var CANVAS_ROULETTE_Y = 100;        //  キャンバスに表示するルーレットのY座標
+
+		    //  回転系
+		    var COUNT_MAX = 3000;           //  カウンターの最大値
+		    var COUNT_MIN = 0;              //  カウンターの最小値（角度調整）
+		    var COUNT_OFFSET = 0;       //  カウンターで画像とシンボルの表示を合わせる
 		    var ROTATION_RESOLUTION = 1000; //  回転解像度
 		    var ROTATION_SPEED = 20;        //  回転速度
 		    var ROTATION_DOWN_SPEED = 10;   //  減速後の速度
             //  時間系
 		    var STOP_SECOND = 1000;         //  ストップボタンが押されてから停止する時間
+
+		    var ROULETTE_IMG_NAME = "roulleteCircleImg2";   //  ルーレット盤の背景画像
 
 		    //  シンボルの柄リスト
 		    var symbol = {
@@ -97,21 +107,21 @@
 		    //--------------------------
 		    function roulette(_rSpeed) {
 		        this.rSpeed = _rSpeed;  //  回転速度
-		        this.count = 0;         //  カウンター
+		        this.count = COUNT_MIN;         //  カウンター
 		        this.IsCount = true;    //  カウントするか
 
                 //  初期化
 		        this.init = function () {
 		            this.rSpeed = ROTATION_SPEED;
 		            this.IsCount = true;
-		            this.count = 0;
+		            this.count = COUNT_MIN;
 		        }
                 //  更新
 		        this.update = function () {
 		            if (this.IsCount == false) return;
 		            this.count++;
 		            if (COUNT_MAX < this.count) {
-		                this.count = 0;
+		                this.count = COUNT_MIN;
 		            }
 		        }
 		    }// ここまでルーレットオブジェクト
@@ -154,7 +164,8 @@
 			}
 			
             //  ストップボタンが押された処理
-			function stopTimer(){
+            function stopTimer() {
+                countRoulette = 0;
 			    roulette1.rSpeed = ROTATION_DOWN_SPEED;
 			    timerId2 = setInterval(stopRoulette, STOP_SECOND);
 			    //  6秒後に全部ストップ
@@ -175,6 +186,7 @@
 			function stopRoulette() {
 			    
 			    if (countRoulette == 0) {
+			        //update();
 			        //  当たったシンボルを保存する
 			        saveStopSymbol(rTimer * roulette1.count * roulette1.rSpeed, stopSymbol);
 			        roulette1.IsCount = false;
@@ -316,11 +328,11 @@
 			function draw() {
 
                 //  ルーレット描画
-			    drawRoulette("canvas", 100, 100, 50, stopSymbol, roulette1.rSpeed, roulette1.count);
-			    drawRoulette("canvas2", 100, 100, 50, stopSymbol, roulette2.rSpeed, roulette2.count);
-			    drawRoulette("canvas3", 100, 100, 50, stopSymbol, roulette3.rSpeed, roulette3.count);
-			    drawRoulette("canvas4", 100, 100, 50, stopSymbol2, roulette4.rSpeed, roulette4.count);
-			    drawRoulette("canvas5", 100, 100, 50, stopSymbol3, roulette5.rSpeed, roulette5.count);
+			    drawRoulette("canvas", CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS, stopSymbol, roulette1.rSpeed, roulette1.count);
+			    drawRoulette("canvas2", CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS, stopSymbol, roulette2.rSpeed, roulette2.count);
+			    drawRoulette("canvas3", CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS, stopSymbol, roulette3.rSpeed, roulette3.count);
+			    drawRoulette("canvas4", CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS, stopSymbol2, roulette4.rSpeed, roulette4.count);
+			    drawRoulette("canvas5", CANVAS_ROULETTE_X, CANVAS_ROULETTE_Y, CANVAS_ROULETTE_RADIUS, stopSymbol3, roulette5.rSpeed, roulette5.count);
 			    //drawRoulette2("canvas5", 100, 100, 50, stopSymbol3, rouletteTest[0]);
 
 			    //  結果を表示する
@@ -380,11 +392,18 @@
 			    var canvas = document.getElementById(_canvas);
 			    ctx = canvas.getContext("2d");
 
-			//    var rouletteCircleImg = document.getElementById("rouletteCircleImg");
-			 //   ctx.drawImage(rouletteCircleImg,_x - _radius, _y - _radius);
-
                 //  キャンバスの大きさ分画像を更新する
-			    ctx.clearRect(0, 0, 200, 200);
+			    ctx.clearRect(CANVAS_ROULETTE_MIN, CANVAS_ROULETTE_MIN, CANVAS_ROULETTE_MAX, CANVAS_ROULETTE_MAX);
+
+			    ctx.save();
+
+			    //  画像を挿入
+			    var rouletteImg = document.getElementById(ROULETTE_IMG_NAME);
+			    ctx.translate(_x, _y);          //  円の中心座標を設定する
+			    ctx.rotate(rTimer * (_count + COUNT_OFFSET) * _rSpeed);  //	座標回転（移動用）
+			    ctx.drawImage(rouletteImg, -_radius, -_radius, _radius * 2, _radius * 2);
+
+			    ctx.restore();  //  セーブした描画状態を取り出す
 
                 //  ルーレット盤に表示するシンボル分繰り返す
 			    for (var i = 0; i < stopSymbol.length; i++) {
@@ -396,8 +415,9 @@
 			        ctx.rotate(rTimer * _count * _rSpeed);  //	座標回転（移動用）
 
 			        //drawSymbol(_stopSymbol[i], _radius);
-			        drawSymbolImg(_stopSymbol[i], _radius); //  シンボル表示
+			        drawSymbolImg(_stopSymbol[i], _radius); //  シンボル表示			        
 
+                    //  線を表示する（デバッグ用）
 			        ctx.beginPath();
 			        ctx.moveTo(0, 0);
 			        ctx.lineTo(0, -1*_radius);  //  線を表示
@@ -406,8 +426,8 @@
 			        ctx.restore();  //  セーブした描画状態を取り出す
 			    }
 			   
-			    drawCircle(_x, _y, _radius);                //	円を表示
-			    drawUnderTriangle(_x, _y - _radius + 2, 10);//  下三角を表示
+			    drawCircle(_x, _y, _radius);                //	円を表示（デバッグ）
+			    drawUnderTriangle(_x, _y - _radius + 2, 10);//  下三角を表示（デバッグ）
 
 			}
 
@@ -461,8 +481,6 @@
         <p id="angle"></p>
         <p id="rate"></p>
         <p>ストップボタンが押されたら、1秒後に停止</p>
-		<!--<p>抽選結果：停止時に止まる値</p>
-        <H2 id="result"></H2>!-->
         <table >
             <tr id="resultSymboltitle">
                 <td>Symbol</td>
@@ -505,5 +523,6 @@
         <img id="daiamondImg" src="./img/daiamond.jpg" style="display:none" />
         <img id="cloverImg" src="./img/clover.jpg" style="display:none" />
         <img id="roulleteCircleImg" src="./img/rouletteCircle.png" style="display:none" />
+        <img id="roulleteCircleImg2" src="./img/rouletteCircle2.jpg" style="display:none" />
 	</body>
 </html>
