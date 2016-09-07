@@ -18,60 +18,158 @@
 		<script>
 		    "use strict";    //  エラーチェック
 
+            //-----------------------------
 		    //  定数
-		    var FRAME_RATE = 30;            //  1秒間に画面を更新する頻度
-		   // var COUNT_MAX = 50;
-		    var COUNT_MAX = 1000;
-
+		    //-----------------------------
+		    var FRAME_RATE = 1000/30;            //  1秒間に画面を更新する頻度
+		    //		    var frame = 1000 / 30;
+		    //  回転
+		    var COUNT_MAX = 3000;           //  カウンターを更新する値
+		    var ROTATION_RESOLUTION = 1000; //  回転解像度
 		    var ROTATION_SPEED = 20;        //  回転速度
 		    var ROTATION_DOWN_SPEED = 10;   //  減速後の速度
-		    var STOP_SECOND = 1000;     //  ストップボタンが押されてから停止する速度
-		    
+            //  時間系
+		    var STOP_SECOND = 1000;         //  ストップボタンが押されてから停止する時間
 
-            //  画面更新系
-		    var frame = 1000 / FRAME_RATE;
+		    //  シンボルの柄リスト
+		    var symbol = {
+		        BONUS: 0,
+		        HEART: 1,
+		        SPADE: 2,
+		        DIAMOND: 3,
+		        CLOVER: 4
+		    };
 
-			//タイマー表示系
-		    var timerId = NaN;//count = 0;
-			var timerId2 = NaN;
-			var timerId3 = NaN;
+		    //  ルーレットに表示するシンボルリスト（時計回り）
+		    var stopSymbol = [
+                symbol.BONUS,
+                symbol.HEART,
+                symbol.SPADE,
+                symbol.DIAMOND,
+                symbol.CLOVER,
+                symbol.BONUS,
+                symbol.HEART,
+                symbol.SPADE,
+                symbol.DIAMOND,
+                symbol.CLOVER,
+                symbol.HEART,
+                symbol.SPADE
+		    ];
 
-			//  現在の回転角度
-			//var rTimer = (Math.PI * 2) / (COUNT_MAX * ROTATION_SPEED);
-			var rTimer = (Math.PI * 2) / COUNT_MAX;
+		    //  ルーレットに表示するシンボルリスト（時計回り）
+		    var stopSymbol2 = [
+                symbol.BONUS,
+                symbol.HEART,
+                symbol.HEART,
+                symbol.HEART,
+                symbol.HEART,
+                symbol.HEART,
+                symbol.HEART,
+                symbol.HEART,
+                symbol.HEART,
+                symbol.HEART,
+                symbol.HEART,
+                symbol.HEART
+		    ];
 
+		    //  ルーレットに表示するシンボルリスト（時計回り）
+		    var stopSymbol3 = [
+                symbol.BONUS,
+                symbol.SPADE,
+                symbol.SPADE,
+                symbol.SPADE,
+                symbol.SPADE,
+                symbol.SPADE,
+                symbol.SPADE,
+                symbol.SPADE,
+                symbol.SPADE,
+                symbol.SPADE,
+                symbol.SPADE,
+                symbol.SPADE
+		    ];
+
+		    //  くじ引きの中身＊＊＊＊＊いらない
+		    var symbolStop = [];
+		    var SYMBOL_MAX = 1000;
+
+		    //--------------------------
+		    //  ルーレットオブジェクト
+		    //--------------------------
+		    function roulette(_rSpeed) {
+		        this.rSpeed = _rSpeed;  //  回転速度
+		        this.count = 0;         //  カウンター
+		        this.IsCount = true;    //  カウントするか
+
+                //  初期化
+		        this.init = function () {
+		            this.rSpeed = ROTATION_SPEED;
+		            this.IsCount = true;
+		            this.count = 0;
+		        }
+                //  更新
+		        this.update = function () {
+		            if (this.IsCount == false) return;
+		            this.count++;
+		            if (COUNT_MAX < this.count) {
+		                this.count = 0;
+		            }
+		        }
+		    }// ここまでルーレットオブジェクト
+
+		    //-----------------------------
 		    //  変数
-            //  回転速度
-		    //	var rSpeed = ROTATION_SPEED;    //  速度
+		    //-----------------------------
+			//  タイマー系
+		    var timerId = NaN;  //  回転中の画像更新
+			var timerId2 = NaN; //  ルーレット一つ一つを減速停止させる処理
+			var timerId3 = NaN; //  ルーレットすべてが停止後の処理
+			var rTimer = (Math.PI * 2) / ROTATION_RESOLUTION; //  回転係数
+			
+			var countRoulette = 0;//  ルーレットが何個停止処理に入っているかカウントする
 
-			//var aSpeedDown = -1;  //  減速時の加速度
+			//  結果系
+			var symbolResult = [0, 0, 0, 0, 0];//  停止したシンボルの数を取得
+            
+            //  ルーレットオブジェクト
+			var roulette1 = new roulette(ROTATION_SPEED);
+			var roulette2 = new roulette(ROTATION_SPEED);
+			var roulette3 = new roulette(ROTATION_SPEED);
+			var roulette4 = new roulette(ROTATION_SPEED);
+			var roulette5 = new roulette(ROTATION_SPEED);
 
-			//  停止したシンボルの数を取得する変数
-			var symbolResult = [0,0,0,0,0];
+            //  描画系
+			var ctx;    //  ルーレット表示用コンテキスト
+			//var bounusImg = document.getElementById("");
 
 
+            //  スタートボタンが押された処理
             function startTimer() {
                 timerInit();
 			    clearInterval(timerId);
-			    timerId = setInterval(tick, frame);
+			    timerId = setInterval(update, FRAME_RATE);
 
 			    for (var i = 0; i < symbolResult.length; i++) {
 			        symbolResult[i] = 0;
 			    }
 			}
 			
+            //  ストップボタンが押された処理
 			function stopTimer(){
-			   // aSpeedDown = -1;
-			    //rSpeed = ROTATION_DOWN_SPEED;
 			    roulette1.rSpeed = ROTATION_DOWN_SPEED;
 			    timerId2 = setInterval(stopRoulette, STOP_SECOND);
-			    //  5秒後に全部ストップ
+			    //  6秒後に全部ストップ
 			    clearInterval(timerId3);
 			    timerId3 = setInterval(stop, STOP_SECOND*6);
-			    result();
+			   // result();
 			}
 
-			var countRoulette = 0;
+			//  初期化（最初に呼ばれる）
+			function init() {
+
+			    timerInit();
+			    draw();
+
+			}
 
             //  ルーレットをストップさせる
 			function stopRoulette() {
@@ -106,54 +204,26 @@
 			    clearInterval(timerId);
 			    clearInterval(timerId2);
 			    clearInterval(timerId3);
-			   // insert();
+
 			}
 
 			function timerInit() {
+                //  停止ルーレットの数を初期化
 			    countRoulette = 0;
+                //  ルーレットを初期化
 			    roulette1.init();
 			    roulette2.init();
 			    roulette3.init();
 			    roulette4.init();
 			    roulette5.init();
+                //  タイマーを初期化
 			    clearInterval(timerId);
 			    clearInterval(timerId2);
 			    clearInterval(timerId3);
 			}
 
-		    //--------------------------
-		    //  ルーレットオブジェクト
-            //--------------------------
-			function roulette(_rSpeed) {
-			    this.rSpeed = _rSpeed;
-			    this.count = 0;
-			    this.IsCount = true;
-
-			    this.init = function () {
-			        this.rSpeed = ROTATION_SPEED;
-			        this.IsCount = true;
-			        this.count = 0;
-			    }
-			    this.update = function () {
-
-			        if (this.IsCount == false) return;
-
-			        this.count++;
-			        if (COUNT_MAX < this.count) {
-			            this.count = 0;
-			        }
-			    }
-			}
-
-			var roulette1 = new roulette(ROTATION_SPEED);
-			var roulette2 = new roulette(ROTATION_SPEED);
-			var roulette3 = new roulette(ROTATION_SPEED);
-			var roulette4 = new roulette(ROTATION_SPEED);
-			var roulette5 = new roulette(ROTATION_SPEED);
-
-			//var rouletteTest = [];
-
-			function tick(){
+		    //  回転中に呼ばれる関数
+			function update(){
 
 			    roulette1.update();
 			    roulette2.update();
@@ -162,19 +232,28 @@
 			    roulette5.update();
 			    draw();
 		
-			
 			}
-
-			
-			
-            //  文字盤に指定した文字列を表示する
+		
+            //  文字盤に指定した文字列を表示する（デバッグ用）
 			function drawSymbol(symbol,_radius) {
 			    ctx.font = "12px 'Times New Roman'";
 
 			    ctx.fillStyle = "red";
-			    // ctx.fillText(symbol, 5, -35);
 			    ctx.fillText(symbol, _radius*0.083, -1*_radius * 0.7);
-                _radius*0.7
+			}
+
+			//  文字盤に指定した画像を表示する
+			function drawSymbolImg(_symbol, _radius) {
+			    var imgId;
+			    switch (_symbol) {
+			        case symbol.BONUS:      imgId = "bounusImg";    break;
+			        case symbol.HEART:      imgId = "heartImg";     break;
+			        case symbol.SPADE:      imgId = "spadeImg";     break;
+			        case symbol.DIAMOND:    imgId = "daiamondImg";  break;
+			        case symbol.CLOVER:     imgId = "cloverImg";    break;
+			    }
+			    var img = document.getElementById(imgId);
+			    ctx.drawImage(img, _radius * 0.083, -1 * _radius * 0.9, 12, 12);
 			}
 			
 			//  円を描く
@@ -185,7 +264,7 @@
 			}
 
 			//  下三角を描く。
-			//  引数は下の頂点座標と高さ
+			//  引数：下の頂点座標（ｘ、ｙ）、三角の高さ
 			function drawUnderTriangle(down_x,down_y,width) {
 			    ctx.beginPath();
 			    ctx.moveTo(down_x - width / 2, down_y - width);
@@ -196,21 +275,6 @@
 			    ctx.stroke();
 			}
 			
-            /*
-			function angleStop(_roulette) {
-
-			    var rotation = rTimer * roulette1.count * roulette1.rSpeed;
-			    var radian = (Math.PI*2)/12;
-
-			    for (var i = 0;i<12;i++){
-			        if (radian * i < rotation && rotation <= radian * i + 1) {
-			            //symbolResult[symbol.BONUS];
-			            document.getElementById("angle").textContent = "針が刺している数字は" + stopSymbol[11-i];
-			        }
-			    }
-
-			}
-            */
 
 		    //  当たったシンボルを保存する
             //  引数：１シンボルのラジアン、回転角度、シンボルの柄リスト
@@ -223,6 +287,7 @@
 			    for (var i = 0; i < 12; i++) {
 			        if (radian * i <= rotation2 && rotation2 < radian * (i + 1)) {
 			            ++symbolResult[_stopSymbol[11 - i]];
+                        //  デバッグ用＊＊＊＊＊
 			            document.getElementById("angle").textContent = "針が刺している数字は" + _stopSymbol[11 - i];
 			            return;
 			        }
@@ -230,18 +295,8 @@
 
 			}
 
-            //  結果を表示する
-			function insert() {
-			    /*
-			    drawTable("resultSymbol", "Symbol", "Number");
-			    drawTable("resultSymbol", symbol.BONUS, symbolResult[symbol.BONUS]);
-			    drawTable("resultSymbol", symbol.HEART, symbolResult[symbol.HEART]);
-			    drawTable("resultSymbol", symbol.CLOVER, symbolResult[symbol.CLOVER]);
-			    drawTable("resultSymbol", symbol.SPADE, symbolResult[symbol.SPADE]);
-			    drawTable("resultSymbol", symbol.DIAMOND, symbolResult[symbol.DIAMOND]);
-                */
-			}
-
+		    //  結果をテーブルに表示する
+            //  引数：テーブルID、シンボル、
 			function drawTable(_parentId,_symbol, _number) {
 			    var parent = document.getElementById(_parentId);
 
@@ -250,32 +305,13 @@
 			    var td = document.createElement("td");
 			    td.textContent = _symbol;
 			    tr.appendChild(td);
-			    //var tr = document.createElement("tr");
+                //  ナンバー部分
 			    var td = document.createElement("td");
 			    td.textContent = _number;
 			    tr.appendChild(td);
 			    parent.appendChild(tr);
 			}
 
-			/*function drawTableTr(_Id, _symbol, _number) {
-			    //var parent = document.getElementById(_parentId);
-			    document.getElementById(_Id).textContent = 
-			}*/
-
-
-            /*
-            //回転速度調整用
-			function upSpeed(){
-				document.getElementById("rSpeed").textContent=rSpeed;
-				rSpeed++;
-			}
-			
-			function downSpeed(){
-				document.getElementById("rSpeed").textContent=rSpeed;
-				rSpeed--;
-			}
-			*/
-			var ctx;
 
 			function draw() {
 
@@ -287,157 +323,122 @@
 			    drawRoulette("canvas5", 100, 100, 50, stopSymbol3, roulette5.rSpeed, roulette5.count);
 			    //drawRoulette2("canvas5", 100, 100, 50, stopSymbol3, rouletteTest[0]);
 
-                //  結果を表示する
-			    document.getElementById("resultSymbol1").textContent = symbol.BONUS;
+			    //  結果を表示する
+                /*
+			    var bounusImg = document.getElementById("bounusImg");
+
+			    var field = document.getElementById("canvasSymbol1");
+			    var ctx2 = field.getContext("2d");
+                
+			    ctx2.drawImage(bounusImg, 0, 0,20,20);
+                */
+			 /*   drawImg("canvasSymbol1", "bounusImg", 0, 0, 20, 20);
+			    drawImg("canvasSymbol2", "heartImg", 0, 0, 20, 20);
+			    drawImg("canvasSymbol3", "spadeImg", 0, 0, 20, 20);
+			    drawImg("canvasSymbol4", "daiamondImg", 0, 0, 20, 20);
+			    drawImg("canvasSymbol5", "cloverImg", 0, 0, 20, 20);*/
 			    document.getElementById("resultSymbolNum1").textContent = symbolResult[0];
-			    document.getElementById("resultSymbol2").textContent = symbol.HEART;
+			   // document.getElementById("resultSymbol2").textContent = symbol.HEART;
 			    document.getElementById("resultSymbolNum2").textContent = symbolResult[1];
-			    document.getElementById("resultSymbol3").textContent = symbol.SPADE;
+			   // document.getElementById("resultSymbol3").textContent = symbol.SPADE;
 			    document.getElementById("resultSymbolNum3").textContent = symbolResult[2];
-			    document.getElementById("resultSymbol4").textContent = symbol.DIAMOND;
+			  //  document.getElementById("resultSymbol4").textContent = symbol.DIAMOND;
 			    document.getElementById("resultSymbolNum4").textContent = symbolResult[3];
-			    document.getElementById("resultSymbol5").textContent = symbol.CLOVER;
+			  //  document.getElementById("resultSymbol5").textContent = symbol.CLOVER;
 			    document.getElementById("resultSymbolNum5").textContent = symbolResult[4];
-			}
-			function init() {
 
-			    timerInit();
-			    draw();
-			    
+                //  テーブルに画像をシンボル画像を表示する
+			    for (var i = 0; i < 5; i++) {
+			        switch (i) {
+			            case symbol.BONUS:      drawImg("canvasSymbol1", "bounusImg", 0, 0, 20, 20);    break;
+			            case symbol.HEART:      drawImg("canvasSymbol2", "heartImg", 0, 0, 20, 20);     break;
+			            case symbol.SPADE:      drawImg("canvasSymbol3", "spadeImg", 0, 0, 20, 20);     break;
+			            case symbol.DIAMOND:    drawImg("canvasSymbol4", "daiamondImg", 0, 0, 20, 20);  break;
+			            case symbol.CLOVER:     drawImg("canvasSymbol5", "cloverImg", 0, 0, 20, 20);    break;
+			        }
+			    }
+
 			}
 
-		    //  ルーレットの文字盤を描く
-            //  コンテキスト名、ルーレットの中心座標（ｘ、ｙ）、半径、ストップの柄、回転速度
+            //  結果を表示する
+		    //  引数：表示するキャンバス名、ID、表示位置、表示の大きさ
+			function drawImg(_canvas, _imgId, _x, _y, _w, _h) {
+
+			    var img = document.getElementById(_imgId);
+
+			    var field = document.getElementById(_canvas);
+			    var ctx2 = field.getContext("2d");
+
+			    ctx2.drawImage(img, _x, _y, _w, _h);
+			}
+
+            //-----------------------------------
+		    //  ルーレットを描く
+		    //  引数：コンテキスト名、ルーレットの中心座標（ｘ、ｙ）、半径、ストップの柄、回転速度
+		    //-----------------------------------
 			function drawRoulette(_canvas,_x,_y,_radius,_stopSymbol,_rSpeed,_count) {
 			    var canvas = document.getElementById(_canvas);
 			    ctx = canvas.getContext("2d");
 
+			//    var rouletteCircleImg = document.getElementById("rouletteCircleImg");
+			 //   ctx.drawImage(rouletteCircleImg,_x - _radius, _y - _radius);
+
                 //  キャンバスの大きさ分画像を更新する
 			    ctx.clearRect(0, 0, 200, 200);
 
+                //  ルーレット盤に表示するシンボル分繰り返す
 			    for (var i = 0; i < stopSymbol.length; i++) {
 			        ctx.save();
-			        var r = Math.PI / 6 * i;
-			        ctx.translate(_x, _y);
-			        ctx.rotate(r);
+			        var r = (Math.PI / 6) * i;    //  12分割する（2π/12*i)
+			        ctx.translate(_x, _y);          //  円の中心座標を設定する
+			        ctx.rotate(r);                  //  座標回転（分割用）
 
-			        //	countに合わせて回転させる
-			        //var rTimer = (Math.PI * 2) / (COUNT_MAX * ROTATION_SPEED);
-			        //ctx.rotate(rTimer * count * _rSpeed);
-			        ctx.rotate(rTimer * _count * _rSpeed);
+			        ctx.rotate(rTimer * _count * _rSpeed);  //	座標回転（移動用）
 
-
-			        //drawSymbol(stopSymbol[i],_radius);
-			        drawSymbol(_stopSymbol[i], _radius);
+			        //drawSymbol(_stopSymbol[i], _radius);
+			        drawSymbolImg(_stopSymbol[i], _radius); //  シンボル表示
 
 			        ctx.beginPath();
 			        ctx.moveTo(0, 0);
-			        ctx.lineTo(0, -1*_radius);
+			        ctx.lineTo(0, -1*_radius);  //  線を表示
 			        ctx.stroke();
 
-			        ctx.restore();
+			        ctx.restore();  //  セーブした描画状態を取り出す
 			    }
+			   
+			    drawCircle(_x, _y, _radius);                //	円を表示
+			    drawUnderTriangle(_x, _y - _radius + 2, 10);//  下三角を表示
 
-			    //	円を表示
-			    drawCircle(_x, _y, _radius);
-
-			    //  下三角を表示
-			    drawUnderTriangle(_x, _y-_radius+2, 10);
-
-			    //initSymbol();
 			}
 
-			
-            //  シンボルの柄リスト
-			var symbol = {
-			    BONUS: 0,
-			    HEART: 1,
-			    SPADE: 2,
-			    DIAMOND: 3,
-			    CLOVER: 4
-			}
-
-
-            //  12ストップの柄
-			var stopSymbol = [
-                symbol.BONUS,
-                symbol.HEART,
-                symbol.SPADE,
-                symbol.DIAMOND,
-                symbol.CLOVER,
-                symbol.BONUS,
-                symbol.HEART,
-                symbol.SPADE,
-                symbol.DIAMOND,
-                symbol.CLOVER,
-                symbol.HEART,
-                symbol.SPADE
-			];
-
-			//  12ストップの柄
-			var stopSymbol2 = [
-                symbol.BONUS,
-                symbol.HEART,
-                symbol.HEART,
-                symbol.HEART,
-                symbol.HEART,
-                symbol.HEART,
-                symbol.HEART,
-                symbol.HEART,
-                symbol.HEART,
-                symbol.HEART,
-                symbol.HEART,
-                symbol.HEART
-			];
-
-			//  12ストップの柄
-			var stopSymbol3 = [
-                symbol.BONUS,
-                symbol.SPADE,
-                symbol.SPADE,
-                symbol.SPADE,
-                symbol.SPADE,
-                symbol.SPADE,
-                symbol.SPADE,
-                symbol.SPADE,
-                symbol.SPADE,
-                symbol.SPADE,
-                symbol.SPADE,
-                symbol.SPADE
-			];
-
-			
-
-
-            //  くじ引きの中身
-			var symbolStop = [];
-			var SYMBOL_MAX = 1000;
-
-			function initSymbol() {
+            //  確率計算＊＊＊＊いらない
+	/*		function initSymbol() {
 			    setSympbol(symbol.BONUS, 0.1);
 			    setSympbol(symbol.HEART, 0.3);
 			    setSympbol(symbol.SPADE, 0.2);
 			    setSympbol(symbol.DIAMOND, 0.2);
 			    setSympbol(symbol.CLOVER, 0.2);
 			}
-
+            */
 		    //  指定したシンボルを確率分入れる
-            //  引数　指定シンボル、出現確率
-			function setSympbol(_symbol, _rate) {
+            //  引数　指定シンボル、出現確率*****いらない
+	/*		function setSympbol(_symbol, _rate) {
 
 			    var r = _rate * SYMBOL_MAX;
 
 			    for (var i = 0; i < r; i++) {
 			        symbolStop.push(_symbol);
 			    }
-			}
+			}*/
 
-			function result() {
+            /// いらない
+		/*	function result() {
                 //  中身からランダムで一つ引く
 			    var rand = symbolStop[Math.floor(Math.random() * symbolStop.length)];
 			    document.getElementById("result").textContent = rand;
-			}
+			}*/
 
+            //  ランダム（あとで改良
 			function drawRand() {
 			    var rand = Math.floor(Math.random() * 5+1);
 			    document.getElementById("rate").textContent = "×"+rand;
@@ -468,26 +469,41 @@
                 <td>Number</td>
             </tr>
             <tr>
-                <td id="resultSymbol1"></td>
+                <td id="resultSymbol1">
+                    <canvas id="canvasSymbol1" width="20" height="20"></canvas>
+                </td>
                 <td id="resultSymbolNum1"></td>
             </tr>
             <tr>
-                <td id="resultSymbol2"></td>
+                <td id="resultSymbol2">
+                    <canvas id="canvasSymbol2" width="20" height="20"></canvas>
+                </td>
                 <td id="resultSymbolNum2"></td>
             </tr>
             <tr>
-                <td id="resultSymbol3"></td>
+                <td id="resultSymbol3">
+                    <canvas id="canvasSymbol3" width="20" height="20"></canvas>
+                </td>
                 <td id="resultSymbolNum3"></td>
             </tr>
             <tr>
-                <td id="resultSymbol4"></td>
+                <td id="resultSymbol4">
+                    <canvas id="canvasSymbol4" width="20" height="20"></canvas>
+                </td>
                 <td id="resultSymbolNum4"></td>
             </tr>
             <tr>
-                <td id="resultSymbol5"></td>
+                <td id="resultSymbol5">
+                    <canvas id="canvasSymbol5" width="20" height="20"></canvas>
+                </td>
                 <td id="resultSymbolNum5"></td>
             </tr>
         </table>
-		
+		<img id="bounusImg" src="./img/bounus.png" style="display:none" />
+        <img id="heartImg" src="./img/heart.jpg" style="display:none" />
+        <img id="spadeImg" src="./img/spade.jpg" style="display:none" />
+        <img id="daiamondImg" src="./img/daiamond.jpg" style="display:none" />
+        <img id="cloverImg" src="./img/clover.jpg" style="display:none" />
+        <img id="roulleteCircleImg" src="./img/rouletteCircle.png" style="display:none" />
 	</body>
 </html>

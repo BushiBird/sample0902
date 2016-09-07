@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+
+		<!-- Always force latest IE rendering engine (even in intranet) & Chrome Frame
+		Remove this if you use the .htaccess -->
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+		<title>HTML</title>
+		<meta name="description" content="">
+		<meta name="author" content="中田 明日香">
+
+		<meta name="viewport" content="width=device-width; initial-scale=1.0">
+        <link href="./roulette.css" rel="stylesheet" type="text/css">
+
+
+		<script>
+		    //  定数
+		    var FRAME_RATE = 30;            //  1秒間に画面を更新する頻度
+		    var COUNT_MAX = 50;
+
+		    var ROTATION_SPEED = 20;        //  回転速度
+		    var ROTATION_DOWN_SPEED = 10;   //  減速後の速度
+		    var STOP_SECOND = 1000;     //  ストップボタンが押されてから停止する速度
+		    
+
+            //  画面更新系
+		    var frame = 1000 / FRAME_RATE;
+
+			//タイマー表示系
+			var timerId=NaN, count = 0;
+			var timerId2 = NaN;
+			var timerId3 = NaN;
+
+		    //  変数
+            //  回転速度
+		//	var rSpeed = ROTATION_SPEED;    //  速度
+            var aSpeedDown = -1;  //  減速時の加速度
+
+            function startTimer() {
+                timerInit();
+			    clearInterval(timerId);
+			   // rSpeed = ROTATION_SPEED;
+			    aSpeedDown = 1;
+			    timerId = setInterval(tick, frame);
+			}
+			
+			function stopTimer(){
+			   // aSpeedDown = -1;
+			    //rSpeed = ROTATION_DOWN_SPEED;
+			    roulette1.rSpeed = ROTATION_DOWN_SPEED;
+			    timerId2 = setInterval(stopRoulette, STOP_SECOND);
+			    //  5秒後に全部ストップ
+			    clearInterval(timerId3);
+			    timerId3 = setInterval(stop, STOP_SECOND*5);
+			    result();
+			}
+
+			var countRoulette = 0;
+
+			function stopRoulette() {
+			    if (countRoulette==0) {
+			        roulette1.IsCount = false;
+			        roulette2.rSpeed = ROTATION_DOWN_SPEED;
+			    }else if(countRoulette==1){
+			        roulette2.IsCount = false;
+			        roulette3.rSpeed = ROTATION_DOWN_SPEED;
+			    } else if (countRoulette==2) {
+			        roulette3.IsCount = false;
+			        roulette4.rSpeed = ROTATION_DOWN_SPEED;
+			    } else if (countRoulette==3) {
+			        roulette4.IsCount = false;
+			        roulette5.rSpeed = ROTATION_DOWN_SPEED;
+			    }
+			    countRoulette++;
+			}
+
+			function stop() {
+			    clearInterval(timerId);
+			    clearInterval(timerId2);
+			    clearInterval(timerId3);
+			    
+			}
+
+			function timerInit() {
+			    countRoulette = 0;
+			    roulette1.init();
+			    roulette2.init();
+			    roulette3.init();
+			    roulette4.init();
+			    roulette5.init();
+			    clearInterval(timerId);
+			    clearInterval(timerId2);
+			    clearInterval(timerId3);
+			}
+
+
+			function roulette(_rSpeed) {
+			    this.rSpeed = _rSpeed;
+			    this.count = 0;
+			    this.IsCount = true;
+
+			    this.init = function () {
+			        this.rSpeed = ROTATION_SPEED;
+			        this.IsCount = true;
+			        this.count = 0;
+			    }
+			    this.update = function () {
+
+			        if (this.IsCount == false) return;
+
+			        this.count++;
+			        if (COUNT_MAX < this.count) {
+			            this.count = 0;
+			        }
+			    }
+			}
+			var roulette1 = new roulette(ROTATION_SPEED);
+			var roulette2 = new roulette(ROTATION_SPEED);
+			var roulette3 = new roulette(ROTATION_SPEED);
+			var roulette4 = new roulette(ROTATION_SPEED);
+			var roulette5 = new roulette(ROTATION_SPEED);
+
+			function tick(){
+
+			    roulette1.update();
+			    roulette2.update();
+			    roulette3.update();
+			    roulette4.update();
+			    roulette5.update();
+			    draw();
+				
+				angleStop();
+
+			
+			}
+
+			
+			
+            //  文字盤に指定した文字列を表示する
+			function drawSymbol(symbol,_radius) {
+			    ctx.font = "12px 'Times New Roman'";
+
+			    ctx.fillStyle = "red";
+			    // ctx.fillText(symbol, 5, -35);
+			    ctx.fillText(symbol, _radius*0.083, -1*_radius * 0.7);
+                _radius*0.7
+			}
+			
+			//  円を描く
+			function drawCircle(x,y,radius) {
+			    ctx.beginPath();
+			    ctx.arc(x, y, radius, 0, Math.PI * 2);
+			    ctx.stroke();
+			}
+
+			//  下三角を描く。
+			//  引数は下の頂点座標と高さ
+			function drawUnderTriangle(down_x,down_y,width) {
+			    ctx.beginPath();
+			    ctx.moveTo(down_x - width / 2, down_y - width);
+			    ctx.lineTo(down_x, down_y);
+			    ctx.lineTo(down_x + width / 2, down_y - width);
+			    ctx.closePath();
+			    ctx.fill();
+			    ctx.stroke();
+			}
+			
+			function angleStop() {
+
+			    //  現在の回転角度
+			    var rTimer= (Math.PI*2)/1000;
+			    var rotation = rTimer * roulette1.count * roulette1.rSpeed;
+			    var max = rTimer * COUNT_MAX * ROTATION_SPEED;
+
+
+			    for (var i = 0;i<12;i++){
+			        if (i<rotation && rotation<(max/12)*i+1){
+			            document.getElementById("angle").textContent = "針が刺している数字は" + stopSymbol[12 - 1-i];
+			        }
+			    }
+
+			}
+
+            //回転速度調整用
+			function upSpeed(){
+				document.getElementById("rSpeed").textContent=rSpeed;
+				rSpeed++;
+			}
+			
+			function downSpeed(){
+				document.getElementById("rSpeed").textContent=rSpeed;
+				rSpeed--;
+			}
+			
+			var ctx;
+
+			function draw() {
+			    drawRoulette("canvas", 100, 100, 50, stopSymbol, roulette1.rSpeed, roulette1.count);
+			    drawRoulette("canvas2", 100, 100, 50, stopSymbol, roulette2.rSpeed, roulette2.count);
+			    drawRoulette("canvas3", 100, 100, 50, stopSymbol, roulette3.rSpeed, roulette3.count);
+			    drawRoulette("canvas4", 100, 100, 50, stopSymbol2, roulette4.rSpeed, roulette4.count);
+			    drawRoulette("canvas5", 100, 100, 50, stopSymbol3, roulette5.rSpeed, roulette5.count);
+			}
+			function init() {
+
+			    timerInit();
+			    draw();
+			    
+			}
+
+		    //  ルーレットの文字盤を描く
+            //  コンテキスト名、ルーレットの中心座標（ｘ、ｙ）、半径、ストップの柄、回転速度
+			function drawRoulette(_canvas,_x,_y,_radius,_stopSymbol,_rSpeed,_count) {
+			    var canvas = document.getElementById(_canvas);
+			    ctx = canvas.getContext("2d");
+
+                //  キャンバスの大きさ分画像を更新する
+			    ctx.clearRect(0, 0, 200, 200);
+
+			    for (var i = 0; i < stopSymbol.length; i++) {
+			        ctx.save();
+			        var r = Math.PI / 6 * i;
+			        ctx.translate(_x, _y);
+			        ctx.rotate(r);
+
+			        //	countに合わせて回転させる
+			        var rTimer = (Math.PI * 2) / (COUNT_MAX * ROTATION_SPEED);
+			        //ctx.rotate(rTimer * count * _rSpeed);
+			        ctx.rotate(rTimer * _count * _rSpeed);
+
+
+			        //drawSymbol(stopSymbol[i],_radius);
+			        drawSymbol(_stopSymbol[i], _radius);
+
+			        ctx.beginPath();
+			        ctx.moveTo(0, 0);
+			        ctx.lineTo(0, -1*_radius);
+			        ctx.stroke();
+
+			        ctx.restore();
+			    }
+
+			    //	円を表示
+			    drawCircle(_x, _y, _radius);
+
+			    //  下三角を表示
+			    drawUnderTriangle(_x, _y-_radius+2, 10);
+
+			    initSymbol();
+			}
+			
+            //  シンボルの柄リスト
+			var symbol = {
+			    BONUS: 1,
+			    HEART: 2,
+			    SPADE: 3,
+			    DIAMOND: 4,
+			    CLOVER: 5,
+			}
+
+			
+
+            //  12ストップの柄
+			var stopSymbol = [
+                symbol.BONUS,
+                symbol.HEART,
+                symbol.SPADE,
+                symbol.DIAMOND,
+                symbol.CLOVER,
+                symbol.BONUS,
+                symbol.HEART,
+                symbol.SPADE,
+                symbol.DIAMOND,
+                symbol.CLOVER,
+                symbol.HEART,
+                symbol.SPADE,
+			];
+
+			//  12ストップの柄
+			var stopSymbol2 = [
+                symbol.BONUS,
+                symbol.HEART,
+               symbol.HEART,
+                symbol.HEART,
+                symbol.HEART,
+                symbol.HEART,
+                symbol.HEART,
+                symbol.HEART,
+                symbol.HEART,
+                symbol.HEART,
+                symbol.HEART,
+                symbol.HEART,
+			];
+
+			//  12ストップの柄
+			var stopSymbol3 = [
+                symbol.BONUS,
+                symbol.SPADE,
+                symbol.SPADE,
+                symbol.SPADE,
+                symbol.SPADE,
+                symbol.SPADE,
+                symbol.SPADE,
+                symbol.SPADE,
+                symbol.SPADE,
+                symbol.SPADE,
+                symbol.SPADE,
+                symbol.SPADE,
+			];
+
+			
+
+
+            //  くじ引きの中身
+			var symbolStop = [];
+			var SYMBOL_MAX = 1000;
+
+			function initSymbol() {
+			    setSympbol(symbol.BONUS, 0.1);
+			    setSympbol(symbol.HEART, 0.3);
+			    setSympbol(symbol.SPADE, 0.2);
+			    setSympbol(symbol.DIAMOND, 0.2);
+			    setSympbol(symbol.CLOVER, 0.2);
+			}
+
+		    //  指定したシンボルを確率分入れる
+            //  引数　指定シンボル、出現確率
+			function setSympbol(_symbol, _rate) {
+
+			    var r = _rate * SYMBOL_MAX;
+
+			    for (i = 0; i < r; i++) {
+			        symbolStop.push(_symbol);
+			    }
+			}
+
+			function result() {
+                //  中身からランダムで一つ引く
+			    var rand = symbolStop[Math.floor(Math.random() * symbolStop.length)];
+			    document.getElementById("result").textContent = rand;
+			}
+
+			function drawRand() {
+			    var rand = Math.floor(Math.random() * 5+1);
+			    document.getElementById("rate").textContent = "×"+rand;
+			}
+			
+		</script>
+		<!-- Replace favicon.ico & apple-touch-icon.png in the root of your domain and delete these references -->
+		<link rel="shortcut icon" href="/favicon.ico">
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+	</head>
+
+	<body onload="init()">
+		<div class="box1"><canvas id="canvas" width="200" height="200"></canvas></div>
+        <div class="box2"><canvas id="canvas2" width="200" height="200"></canvas></div>
+        <div class="box3"><canvas id="canvas3" width="200" height="200"></canvas></div>
+        <div class="box4"><canvas id="canvas4" width="200" height="200"></canvas></div>
+        <div class="box5"><canvas id="canvas5" width="200" height="200"></canvas></div>
+		<button onclick="startTimer()">スタート</button>
+		<button onclick="stopTimer()">ストップ</button>
+        <p id="angle"></p>
+        <p id="rate"></p>
+        <p>ストップボタンが押されたら、1秒後に停止</p>
+		<p>抽選結果：停止時に止まる値</p>
+        <H2 id="result"></H2>
+        <p>カウンター</p>
+		<H2 id="counter"></H2>
+		<p>回転速度</p>
+		<H2 id="rSpeed"></H2>
+		<button onclick="upSpeed()">アップ</button>
+		<button onclick="downSpeed()">ダウン</button>
+	</body>
+</html>
