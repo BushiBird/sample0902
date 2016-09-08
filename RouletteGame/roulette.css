@@ -1,25 +1,30 @@
 ﻿
+div.boxStart{
+    position: absolute;
+    top: 20%;
+    left: 10%;
+}
 div.box1{
     position: absolute;
     top: 0px;
     left: 20%;
 }
-    div.box2{
+div.box2{
     position: absolute;
-    top: 200px;
+    top: 280px;
     left: 32%;
 }
-    div.box3{
+div.box3{
     position: absolute;
     top: 0px;
     left: 44%;
 }
-    div.box4{
+div.box4{
     position: absolute;
-    top: 200px;
+    top: 280px;
     left: 56%;
 }
-    div.box5{
+div.box5{
     position: absolute;
     top: 0px;
     left: 68%;
